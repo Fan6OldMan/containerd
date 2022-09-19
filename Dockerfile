@@ -7,32 +7,36 @@ COPY pom.xml ./pom.xml
 
 RUN mvn -f pom.xml clean package
 
-FROM alpine:latest
+FROM openjdk:8-jdk-alpine
 
-ENV JAVA_HOME="/usr/lib/jvm/default-jvm/"
+# Environment variables
+ENV TOMCAT_MAJOR=8 \
+    TOMCAT_VERSION=8.5.37 \
+    CATALINA_HOME=/opt/tomcat
 
-RUN apk add openjdk11
-
-ENV PATH=$PATH:${JAVA_HOME}/bin
-
+# init
 RUN apk -U upgrade --update && \
-    mkdir /opt/tomcat && \
-    wget -O /tmp/apache-tomcat.tar.gz https://dlcdn.apache.org/tomcat/tomcat-9/v9.0.65/bin/apache-tomcat-9.0.65.tar.gz && \
-    tar xvzf apache-tomcat-9.0.65.tar.gz --strip-components 1 --directory /opt/tomcat && \
-    addgroup -g 2000 tomcat && \
-    adduser -h /opt/tomcat -u 2000 -G tomcat -s /bin/sh -D tomcat && \
-    mkdir -p /opt/tomcat/logs && \
-    mkdir -p /opt/tomcat/work && \
-    chown -R tomcat:tomcat /opt/tomcat/ && \
-    chmod -R u+wxr /opt/tomcat
+    apk add curl && \
+    apk add ttf-dejavu
 
-ENV CATALINA_HOME /opt/tomcat/
-ENV PATH $CATALINA_HOME/bin:$PATH
-ENV TOMCAT_NATIVE_LIBDIR=$CATALINA_HOME/native-jni-lib
-ENV LD_LIBRARY_PATH=$CATALINA_HOME/native-jni-lib
+RUN mkdir -p /opt
 
-COPY --from=build /app/target/demo.war ./opt/tomcat/webapps
+# install tomcat
+RUN curl -jkSL -o /tmp/apache-tomcat.tar.gz http://archive.apache.org/dist/tomcat/tomcat-${TOMCAT_MAJOR}/v${TOMCAT_VERSION}/bin/apache-tomcat-${TOMCAT_VERSION}.tar.gz && \
+    gunzip /tmp/apache-tomcat.tar.gz && \
+    tar -C /opt -xf /tmp/apache-tomcat.tar && \
+    ln -s /opt/apache-tomcat-$TOMCAT_VERSION $CATALINA_HOME
+
+# cleanup
+RUN apk del curl && \
+    rm -rf /tmp/* /var/cache/apk/*
 
 EXPOSE 8080
 
-CMD ["catalina.sh", "run"]
+COPY startup.sh /opt/startup.sh
+
+ENTRYPOINT /opt/startup.sh
+
+WORKDIR $CATALINA_HOME
+
+COPY --from=build /app/target/demo.war ./opt/tomcat/webapps
