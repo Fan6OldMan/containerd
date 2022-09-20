@@ -34,9 +34,6 @@ RUN curl -jkSL -o /tmp/apache-tomcat.tar.gz http://archive.apache.org/dist/tomca
     tar -C /opt -xf /tmp/apache-tomcat.tar && \
     ln -s /opt/apache-tomcat-$TOMCAT_VERSION $CATALINA_HOME
 
-RUN apk del curl && \
-    rm -rf /tmp/* /var/cache/apk/*
-
 COPY ./target/demo.war ./opt/tomcat/webapps
 
 RUN sh $CATALINA_HOME/bin/startup.sh
