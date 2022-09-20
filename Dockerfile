@@ -1,13 +1,24 @@
-FROM maven:3.6.0-jdk-11-slim as build
+FROM alpine:latest
 
-WORKDIR /app
+ENV LANG C.UTF-8
 
-COPY src ./src
-COPY pom.xml ./pom.xml
+RUN { \
+		echo '#!/bin/sh'; \
+		echo 'set -e'; \
+		echo; \
+		echo 'dirname "$(dirname "$(readlink -f "$(which javac || which java)")")"'; \
+	} > /usr/local/bin/docker-java-home \
+	&& chmod +x /usr/local/bin/docker-java-home
+ENV JAVA_HOME /usr/lib/jvm/java-1.8-openjdk
+ENV PATH $PATH:/usr/lib/jvm/java-1.8-openjdk/jre/bin:/usr/lib/jvm/java-1.8-openjdk/bin
 
-RUN mvn -f pom.xml clean package
+ENV JAVA_VERSION 8u212
+ENV JAVA_ALPINE_VERSION 8.212.04-r0
 
-FROM openjdk:8-jdk-alpine
+RUN set -x \
+	&& apk add --no-cache \
+		openjdk8="$JAVA_ALPINE_VERSION" \
+	&& [ "$JAVA_HOME" = "$(docker-java-home)" ]
 
 ENV TOMCAT_MAJOR=8 \
     TOMCAT_VERSION=8.5.37 \
@@ -27,12 +38,11 @@ RUN curl -jkSL -o /tmp/apache-tomcat.tar.gz http://archive.apache.org/dist/tomca
 RUN apk del curl && \
     rm -rf /tmp/* /var/cache/apk/*
 
-COPY --from=build /app/target/demo.war ./opt/tomcat/webapps
+COPY ./target/demo.war ./opt/tomcat/webapps
 
 RUN sh $CATALINA_HOME/bin/startup.sh
 
 EXPOSE 8080
-
 
 
 
