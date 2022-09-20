@@ -23,8 +23,7 @@ ENV TOMCAT_MAJOR=8 \
     TOMCAT_VERSION=8.5.37 \
     CATALINA_HOME=/opt/tomcat
 
-RUN apk -U upgrade --update && \
-    apk add curl && \
+RUN apk add curl && \
     apk add ttf-dejavu
 
 RUN mkdir -p /opt
